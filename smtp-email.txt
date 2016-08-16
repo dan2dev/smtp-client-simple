@@ -1,0 +1,8 @@
+Oi mundo,
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Nam dignissim rhoncus nisi. Nullam a pharetra dui, et vulputate ipsum.
+Integer at justo sodales, convallis quam sit amet, pellentesque urna.
+
+Atenciosamente,
+Danilo Celestino de Castro
