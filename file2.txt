@@ -1,0 +1,8 @@
+Oi mundo,
+
+Este é o file2.txt.
+Ta tudo funcionando.
+Valew!
+
+Atenciosamente,
+Danilo Celestino de Castro
