@@ -16,14 +16,24 @@
 // -d = destinatario
 // -f = Filename arquivo
 
+#define MAX_MSG 2000
+
 int main(int argc , char *argv[]) {
 	puts("Simples Client de SMTP\n");
 
+	// variaveis de server
+	struct hostent *h;
+	struct sockaddr_in servAddr;
+
 	// variaveis gerais
+	char *argHost = "127.0.0.1";
+	int argHostPort = 25;
 	char *mensagem;
 	char *argMailFrom = "danilo@ubuntu";
 	char *argMailTo = "danilo@ubuntu";
 	char *argFileName = "smtp-email.txt";
+
+
 
 	// Argumentos
 	printf("\n----------------------------------------------------\n");
@@ -49,10 +59,30 @@ int main(int argc , char *argv[]) {
 				argMailTo = (char *) malloc(strlen(argv[i+1])+1);
 				strcpy(argMailTo,argv[i+1]);
 			}
+			if (!strcmp(argv[i],"-p")) {
+				char *hostPortTemp = (char *) malloc(strlen(argv[i+1])+1);
+				hostPortTemp = (char *) malloc(strlen(argv[i+1])+1);
+				strcpy(hostPortTemp,argv[i+1]);
+				argHostPort =  atoi(hostPortTemp);
+				hostPortTemp = NULL;
+			}
+			if (!strcmp(argv[i],"-s")) {
+				// printf("host: %s\n", argv[i+1]);
+				h = gethostbyname(argv[i+1]);
+				if(h==NULL) {
+					printf("%s: host desconhecido \n",argv[i+1]);
+					return 1;
+				}
+				servAddr.sin_family = h->h_addrtype;
+				memcpy((char *) &servAddr.sin_addr.s_addr, h->h_addr_list[0], h->h_length);
+				argHost = (char *) malloc(strlen(inet_ntoa(servAddr.sin_addr)));
+				sprintf(argHost, "%s", inet_ntoa(servAddr.sin_addr));
+			}
 		}
 		printf("remetente: %s\n", argMailFrom);
 		printf("destinatario: %s\n", argMailTo);
 		printf("arquivo: %s\n", argFileName);
+		printf("host: %s:%d\n", argHost, argHostPort);
 	}
 
 
@@ -63,7 +93,13 @@ int main(int argc , char *argv[]) {
 
 
 
-	printf("\n----------------------------------------------------\n");
+
+
+
+
+
+
+	// printf("\n----------------------------------------------------\n");
 	// carregar mensagem na memória ------------------------------
 	long fileSize = 0;
 	// FILE *file = fopen ( "smtp-email.txt" , "rb" );
@@ -79,7 +115,7 @@ int main(int argc , char *argv[]) {
 	fclose(file);
 	// ------------------------
 	//printf("%s", mensagem);
-	printf("\n----------------------------------------------------\n");
+	printf("\nArquivo de mensagem carregado \n");
 
 
 
@@ -95,15 +131,15 @@ int main(int argc , char *argv[]) {
 
 	int sock;
     struct sockaddr_in server;
-    char message[1000] , server_reply[2000];
+    char  server_reply[MAX_MSG];
 
     // Criar socket
     sock = socket(AF_INET , SOCK_STREAM , 0);
     puts("Socket criado \n");
 
-    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server.sin_addr.s_addr = inet_addr(argHost);
     server.sin_family = AF_INET;
-    server.sin_port = htons( 25 );
+    server.sin_port = htons( argHostPort );
 
 	// Conectar ao servidor remoto
     if (connect(sock , (struct sockaddr *)&server , sizeof(server)) < 0) {
@@ -119,47 +155,41 @@ int main(int argc , char *argv[]) {
 	//Send some data
 	char *helo = "HELO localhost 25\n";
 	// mailFrom ---------------------------------------------------------------------------
-	// char *mailFrom = "MAIL FROM: danilo@ubuntu\n";
 	char *mailFromCommandStr = "MAIL FROM: ";
-	char *mailFrom = (char *) malloc(strlen(mailFromCommandStr) + strlen(argMailFrom)+1);
-	strcpy(mailFrom, mailFromCommandStr);
-	strcat(mailFrom, argMailFrom);
-	strcat(mailFrom, "\n");
+	char *mailFrom =  (char *) malloc(strlen(mailFromCommandStr) + strlen(argMailFrom)+1);
+	sprintf(mailFrom, "%s%s\n", mailFromCommandStr, argMailFrom);
+
 	// mailTo -----------------------
 	// char *mailTo = "RCPT TO: danilo@ubuntu\n";
 	char *mailToCommand = "RCPT TO: ";
 	char *mailTo =  (char *) malloc(strlen(mailToCommand) + strlen(argMailTo)+1);
-	strcpy(mailTo, mailToCommand);
-	strcat(mailTo, argMailTo);
-	strcat(mailTo, "\n");
+	sprintf(mailTo, "%s%s\n", mailToCommand, argMailTo);
 	// mensagem ------------------------------------------------------------------------------
 	// char *data = "DATA\nSubject: Teste de email aqui.\n\nMensagem teste aqui. Lorem ipsum dolor sit amet.\n.\n";
 	char *dataCommand = "DATA\nSubject: email teste.\n\n";
 	char *data = (char *) malloc(strlen(dataCommand) + strlen(mensagem)+1);
-	strcpy(data, dataCommand);
-	strcat(data, mensagem);
-	strcat(data, "\n.\n");
+	sprintf(data, "%s%s\n.\n", dataCommand, mensagem);
 
 	// send -----------------------------------------
 	if( send(sock , helo , strlen(helo) , 0) < 0) {	puts("Send failed"); return 1; }
 	//Receive a reply from the server
-	if( recv(sock , server_reply , 2000 , 0) < 0) {	puts("recv failed"); }
+	if( recv(sock , server_reply , MAX_MSG , 0) < 0) {	puts("recv failed"); }
 	puts(server_reply);
 
 	if( send(sock , mailFrom , strlen(mailFrom) , 0) < 0) {	puts("Send failed"); return 1; }
-	if( recv(sock , server_reply , 2000 , 0) < 0) {	puts("recv failed"); }
+	if( recv(sock , server_reply , MAX_MSG , 0) < 0) {	puts("recv failed"); }
 	puts(server_reply);
 
 	if( send(sock , mailTo , strlen(mailTo) , 0) < 0) {	puts("Send failed"); return 1; }
-	if( recv(sock , server_reply , 2000 , 0) < 0) {	puts("recv failed"); }
+	if( recv(sock , server_reply , MAX_MSG , 0) < 0) {	puts("recv failed"); }
 	puts(server_reply);
 
 	if( send(sock , data , strlen(data) , 0) < 0) {	puts("Send failed"); return 1; }
-	if( recv(sock , server_reply , 2000 , 0) < 0) {	puts("recv failed"); }
+	if( recv(sock , server_reply , MAX_MSG , 0) < 0) {	puts("recv failed"); }
 	puts(server_reply);
 
 	if( send(sock , "QUIT\n" , 5 , 0) < 0) {	puts("Send failed"); return 1; }
-	if( recv(sock , server_reply , 2000 , 0) < 0) {	puts("recv failed"); }
+	if( recv(sock , server_reply , MAX_MSG , 0) < 0) {	puts("recv failed"); }
 	puts(server_reply);
 
 
@@ -193,6 +223,8 @@ int main(int argc , char *argv[]) {
 // notes postfix ------------------------------
 /*
 System mail name: ubuntu
+echo "corpo do email" | mail -s "email teste" -a "From: danilo@ubundu" ccastro.danilo@gmail.com
+
 
 written by: Danilo Celestinod e Castro
 */
